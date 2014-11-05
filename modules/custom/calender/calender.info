@@ -1,0 +1,5 @@
+name = Calender
+description = Module calender
+core = 7.x
+package = Developert
+files[] = calender.module

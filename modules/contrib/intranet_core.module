@@ -1,0 +1,303 @@
+<?php
+
+define('INTRANET_CORE_DEFAULT_USER_IMAGE', 'public://user.png');
+
+/**
+ * Implements hook_menu().
+ */
+function intranet_core_menu() {
+  $items = array();
+  $items['update_ldap_users'] = array(
+    'title' => 'ldap update users',
+    'page callback' => '_intranet_core_update_users_ldap',
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('update ldap users'),
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function intranet_core_permission() {
+  return array(
+    'update ldap users' =>  array(
+      'title' => t('Actualizar usuarios ldap'),
+      'description' => t('Sincroniza el directorio con la intranet'),
+    ),
+  );
+}
+/**
+ * Implements hook_user_login().
+ */
+function intranet_core_user_login(&$edit, $account) {
+  /*
+  $nombre = explode(' ', $edit['field_user_firstname']['und'][0]['value']);
+  $apellido = explode(' ', $edit['field_user_lastname']['und'][0]['value']);
+  $nombre_a_mostrar = intranet_core_name_format($nombre[0] . ' ' . $apellido[0]);
+  $edit['field_nombre_para_mostrar']['und'][0]['value'] = $nombre_a_mostrar;
+  user_save($account, $edit);
+  */
+}
+
+function intranet_core_name_format($string){
+  $array = explode(' ', $string);
+  foreach ($array as $key => $value) {
+    $string = strtolower($value);
+    $string = ucfirst($string);
+    $string_array[] = $string;
+  }
+  return implode(' ', $string_array);
+}
+/**
+ * Implements hook_block_info().
+ */
+function intranet_core_block_info() {
+  $blocks['saludo_funcionario'] = array(
+    'info' => t('Saludo al funcionario'),
+    'cache' => DRUPAL_NO_CACHE
+  );
+  $blocks['saludo_seccion'] = array(
+    'info' => t('Saludo en la sección'),
+    'cache' => DRUPAL_NO_CACHE
+  );
+  return $blocks;
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function intranet_core_block_view($delta = '') {
+  $block = array();
+  switch ($delta) {
+    case 'saludo_funcionario':
+      $block['subject'] = t('Saludo al funcionario');
+      $block['content'] = intranet_core_saludo_block_content();
+      break;
+    case 'saludo_seccion':
+      $block['subject'] = t('Saludo en la sección');
+      $block['content'] = intranet_core_seccion_block_content();
+      break;
+  }
+  return $block;
+}
+
+function intranet_core_saludo_block_content() {
+  global $user;
+  $uid = $user->uid;
+  $user_object = user_load($uid);
+  $gender = intranet_core_get_gender($user_object);
+  //Set the greeting message
+  switch ($gender) {
+    case 'Femenino':
+      $greeting = t('Bienvenida a la Intranet');
+      break;
+    case 'Masculino':
+      $greeting = t('Bienvenido a la Intranet');
+      break;
+    default:
+      $greeting = t('Cordial saludo');
+      break;
+  }
+  $greeting = '<strong>' . $greeting . '</strong>';
+  if ($uid != 0) {
+    $display_name = intranet_core_get_display_name($user_object);
+  }
+  else {
+    $display_name = intranet_core_tooltip_link('/user/login', 'Clic aquí para iniciar sesión', 'Personaliza tu experiencia');
+  }
+  $content = '<p>' . $greeting . ": " . $display_name . '</p>';
+  return $content;
+}
+
+function intranet_core_seccion_block_content(){
+  $path_full = drupal_get_path_alias();
+  $path_array = explode('/', $path_full);
+  $section_title = str_replace('_', ' ', $path_array[0]);
+  $section_title = drupal_ucfirst($section_title);
+  $section_name = '<strong>' . $section_title . '</strong>' . ' Proexport';
+  $content = '<p>' . $section_name . '</p>';
+  return $content;
+}
+
+function intranet_core_get_display_name($user_object){
+  $first_name = explode(" ",$user_object->field_user_firstname['und'][0]['safe_value']);
+  $last_name = explode(" ",$user_object->field_user_lastname['und'][0]['safe_value']);
+  $display_name= intranet_core_format_name($first_name[0]) . " " . intranet_core_format_name($last_name[0]);
+  return $display_name;
+}
+
+function intranet_core_format_name($string){
+  return drupal_ucfirst(drupal_strtolower($string));
+}
+function intranet_core_get_gender($user_object){
+  if (isset($user_object->field_perfil_genero['und'])) {
+    $gender_tid = $user_object->field_perfil_genero['und'][0]['tid'];
+    $gender_tax = taxonomy_term_load($gender_tid);
+    $gender = $gender_tax->name;
+    return $gender;
+  }
+  else{
+   $gender = FALSE;
+  }
+}
+
+function intranet_core_tooltip_link($path,$text,$title){
+  $link = '<a data-tooltip class="has-tip tip-right" title="' . $title . '" href="' . $path . '">' . $text . '</a>';
+  return $link;;
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function intranet_core_form_alter(&$form, &$form_state, $form_id) {
+ if ($form_id == 'user_login_block' OR 'user_login') {
+  array_unshift($form['#validate'], 'email_check_validate');
+ }
+}
+
+function email_check_validate($form, &$form_state) {
+  if (isset($form_state['values'])) {
+    $user_name = $form_state['values']['name'];
+    if($arroba = stripos($user_name, "@")){
+      $user_name_fixed = substr($user_name, 0, $arroba);
+      $form_state['values']['name'] = $user_name_fixed;
+    }
+  }
+}
+
+function intranet_core_get_user_profile_url($uid = FALSE){
+  // Check to see if user pictures are enabled (admin/config/people/accounts,
+  // make sure "Enable user pictures" is checked.
+  if (variable_get('user_pictures', 0)) {
+    if($uid) {
+      $account = user_load($uid);
+    }
+    else {
+      // Choose one of the following based on your use case, and remove the rest:
+      // Load the currently logged in user
+      $account = $GLOBALS['user'];
+      // Load the user account from the current user page
+      $account = user_load(arg(1));
+      // Load the user account by username
+      $account = user_load_by_name($username);
+    }
+
+    if (!empty($account->picture)) {
+      // Load user picture if only a file ID is passed, see TODO in
+      // template_preprocess_user_picture for details
+      if (is_numeric($account->picture)) {
+        $account->picture = file_load($account->picture);
+      }
+      // Get filepath from the loaded file object
+      if (!empty($account->picture->uri)) {
+        $filepath = $account->picture->uri;
+      }
+    } elseif (variable_get('user_picture_default', '')) {
+      // Use default user profile picture if the user hasn't provided one
+      $filepath = variable_get('user_picture_default', '');
+    }
+    if (isset($filepath)) {
+      $profile_url = file_create_url($filepath);
+    }
+  }
+
+  // Make sure an image has been loaded, and output the URL
+  if (isset($profile_url)) {
+    return $profile_url;
+  }
+  return FALSE;
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for comment-form().
+ */
+function intranet_core_form_comment_form_alter(&$form, &$form_state, $form_id) {
+  if (user_is_logged_in()) {
+    global $user;
+    $picture = file_load($user->picture);
+    $uid = $user->uid;
+    $markup = theme_image_style(
+      array(
+        'style_name' => 'comentario_circular',
+        'path' => $picture->uri,
+        'attributes' => array(
+          'class' => 'avatar'
+        )
+      )
+    );
+    $form['comment_user_image'] = array(
+      '#type' => 'item',
+      '#markup' => $markup,
+      '#weight' => -20,
+    );
+    $form['actions']['submit']['#value'] = 'Comentar';
+  }
+}
+function pathauto_entity_language(){
+
+}
+
+/* Custom display suite field to display */
+function intranet_core_voting_comments_picture($entity){
+  $cid = $entity->cid;
+  $markup = '';
+  $criteria['entity_type'] = "comment";
+  $criteria['entity_id'] = $cid;
+  $voting = votingapi_select_votes($criteria);
+  foreach ($voting as $key => $value) {
+    $uid = $value['uid'];
+    $user = user_load($uid);
+    $name = intranet_core_get_display_name($user);
+    if ($user->picture) {
+      $uri = $user->picture->uri;
+    }
+    else{
+      $uri = INTRANET_CORE_DEFAULT_USER_IMAGE;
+    }
+    $image = theme_image_style(
+      array(
+        'style_name' => 'comentario_circular_respuesta',
+        'path' => $uri,
+        'attributes' => array(
+          'class' => 'vote_avatar',
+          'title' => $name
+        )
+      )
+    );
+    $markup .= l($image, 'user/'.$uid, array('html'=>TRUE));
+  }
+  return $markup;
+}
+
+function _intranet_core_update_users_ldap(){
+  $users_to_ignore = array('admin','editor','Importador_rss');
+  $usuarios = array();
+  $drupal_users = array();
+  $users_to_delete = array();
+  $drupal_users_all = entity_load('user');
+  $csv = array_map('str_getcsv', file('http://intranet.local/ad_users_csv'));
+  unset($csv[0]);
+  foreach ($csv as $key => $value) {
+    $usuarios[$value[0]] = $value[0];
+  }
+  foreach ($drupal_users_all as $keys => $values) {
+    $drupal_users[$values->name] = array('username' => $values->name, 'uid' => $values->uid);
+  }
+  foreach ($drupal_users as $key_id => $value_data) {
+    if (!isset($usuarios[$key_id])) {
+      if(!in_array($key_id, $users_to_ignore)){
+        $users_to_delete[] = array('username' => $key_id, 'uid' => $value_data['uid']);
+      }
+    }
+  }
+  unset($users_to_delete[0]);
+  foreach ($users_to_delete as $key_user => $value_user) {
+    $todelete = user_load($value_user['uid']);
+    $todelete->status = 0;
+    //user_save($todelete);
+  }
+  dpm($users_to_delete);
+  //dpm(user_load(234));
+  return 'Hola';
+}

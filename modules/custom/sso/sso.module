@@ -1,0 +1,55 @@
+<?php
+
+/**
+ * Implements hook_init().
+ */
+function sso_init() {
+  if (!user_is_logged_in()) {
+    $sso_flag = FALSE;
+    if(isset($_SESSION['sso'])){
+      $sso_flag = $_SESSION['sso'];
+    }
+    $path = current_path();
+    if($path != 'login_sso' && $path != 'login_sso/create_cookie' && !$sso_flag && $path != 'user/login'){
+      $server_ip = $_SERVER['SERVER_ADDR'];
+      if($server_ip == '172.16.2.44'){
+        drupal_goto('login_sso', array('query' => array('after_sso' => $path)));
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_menu().
+ */
+function sso_menu() {
+ $items['login_sso'] = array(
+    'title' => 'Login SSO',
+    'page callback' => 'login_sso_page',
+    'access callback' => TRUE,
+  );
+ $items['login_sso/create_cookie'] = array(
+    'title' => 'Login SSO cookie',
+    'page callback' => 'login_sso_cookie_page',
+    'access callback' => TRUE,
+  );
+  return $items;
+}
+
+function login_sso_page(){
+  $module_path = drupal_get_path('module', 'sso') .'/js/sso.js';
+  $jquery_script = '<script src="/misc/jquery.js "></script>';
+  $jquery_cookie_script = '<script src="/misc/jquery.cookie.js"></script>';
+  $script_module = '<script src="/' . $module_path . '"></script>';
+  $script = $jquery_script . $jquery_cookie_script .   $script_module;
+  print $script;
+}
+
+function login_sso_cookie_page(){
+  $state = $_POST['state'];
+  if ($state == 'ok_sso_checked') {
+    $_SESSION['sso'] = TRUE;
+  } else {
+    $_SESSION['sso'] = FALSE;
+  }
+}

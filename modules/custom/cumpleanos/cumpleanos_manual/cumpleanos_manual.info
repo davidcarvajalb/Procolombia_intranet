@@ -1,0 +1,5 @@
+name = Cumpleaños envio manual
+description = Funcionalidad para el envio manual de postales de cumpleaños
+core = 7.x
+package = Proexport
+version = "0.1"

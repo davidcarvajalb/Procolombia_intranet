@@ -1,0 +1,76 @@
+<?php
+
+/**
+ * @file
+ * Engage the files with a image with de file type
+ *
+ * Autor information: David Carvajal
+ * email: davidgcarvajal@gmail.com
+ */
+
+/**
+ * Implementation hook_form_alter().
+ */
+function file_type_form_alter(&$form, &$form_state, $form_id) {
+  switch ($form_id)  {
+    case 'documento_node_form':
+      $form['field_document_file_type'] = array('#type' => 'hidden');
+      $form['#validate'][] = 'file_type_image_validate';
+      $form['#submit'][] = 'file_type_image_submit';
+    break;
+  }
+}
+
+function file_type_image_validate(&$form, &$form_state) {
+  $fid = $form_state['values']['field_document_file']['und'][0]['fid'];
+  $file = file_load($fid);
+  $taxonomy_term_name = $file->filemime;
+  if (!taxonomyid_by_name($taxonomy_term_name)) {
+    $vocabulary_names = taxonomy_vocabulary_get_names();
+    if ($vocabulary_names['tipo_de_documento']) {
+      $vocabulary_id = $vocabulary_names['tipo_de_documento']->vid;
+      create_taxonomy_term($taxonomy_term_name, $vocabulary_id);
+    }
+  }
+}
+
+function file_type_image_submit(&$form, &$form_state) {
+  $fid = $form_state['values']['field_document_file']['und'][0]['fid'];
+  $file = file_load($fid);
+  $taxonomy_term_name = $file->filemime;
+  $tid = taxonomyid_by_name($taxonomy_term_name);
+  $form_state['values']['field_document_file_type']['und'][0]['tid'] = $tid;
+}
+
+/**
+ * Fuction to search the taxonomy term id from a search criteria Return the taxonomy id or false if doest not exist
+ * @param $term_name
+ *   The taxonomy term name criteria to find
+ */
+function taxonomyid_by_name($term_name) {
+  $result = db_select('taxonomy_term_data', 't')
+    ->fields('t')
+    ->condition('name', $term_name, '=')
+    ->execute()
+    ->fetchAssoc();
+  if (!$result) {
+    return FALSE;
+  }
+  $term_id = $result['tid'];
+  return $term_id;
+}
+
+/**
+ * Create a new taxonomy term with the parameters
+ * @param $name
+ *   The taxonomy term name
+ * @param $vid
+ *   The taxonomy vocabulary id
+ */
+function create_taxonomy_term($name, $vid) {
+  $term = new stdClass();
+  $term->name = $name;
+  $term->vid = $vid;
+  taxonomy_term_save($term);
+  return $term->tid;
+}

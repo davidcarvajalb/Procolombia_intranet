@@ -1,0 +1,65 @@
+/* Drupal reset */
+
+body.admin-menu {
+  margin-top: 30px !important;
+}
+img {
+  max-width:  inherit;
+}
+a,
+strong {
+  font-weight: normal;
+  font-family: 'latobold';
+}
+.element-invisible {
+  display: none;
+}
+.no-padding {
+  padding:  0px;
+}
+.has-tip,
+.has-tip:hover {
+  border-bottom: none;
+}
+.panel-flexible .panel-separator{
+  margin-bottom: 0.8em;
+}
+.right-header,
+.right-header #main-menu,
+.logos {
+  padding: 0px;
+}
+.flexslider .slides img,
+.flex-control-thumbs img {
+  width: inherit;
+}
+.califacion .vote-current-score,
+.califacion .voted-how {
+  display: none;
+}
+.wrapper {
+  content: " ";
+  display: table;
+}
+.panel {
+  border: none;
+}
+.front .alert-box.success {
+  margin-bottom: 0px;
+}
+.panel-flexible .panel-separator {
+  margin: 0;
+}
+.pane-block .pane-content > p {
+  margin-bottom: 0;
+}
+.pane-block .pane-content > p > a > img {
+  width: 100%;
+}
+.pane-block .pane-content .view-header > h2 {
+  margin-top: 0;
+}
+.main .panel-flexible .panels-flexible-row-last {
+  background: none;
+  padding: 0px;
+}

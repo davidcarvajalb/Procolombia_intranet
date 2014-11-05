@@ -1,0 +1,7 @@
+name = Postales de cumpleaños
+description = Envios programados de postales en las fechas de cumpleaños de los usuarios
+core = 7.x
+package = Proexport
+version = "1"
+files[] = cumpleanos.install
+configure = admin/people/birthday

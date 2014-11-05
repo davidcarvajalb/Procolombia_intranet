@@ -1,7 +1,13 @@
+Directorio sites/all de la segunda versión de la Intranet Procolombia, durante este proceso se cambio el nombre de la marca, se cambio el theme y se implementarion funcionalidades nuevas.
 
-This directory should be used to place downloaded and custom modules
-and themes which are common to all sites. Keeping contributed and
-custom modules and themes in the sites directory will aid in upgrading
-Drupal core files. Place contributed and custom modules and themes in
-the sites/all/modules and sites/all/themes directories respectively.
+Tecnología: Drupal 7, php 5.3 y MySQL sobre servidor CENTOS 
+
+Fecha inicio: Abril de 2014
+Fecha fin: Noviembre de 2014
+
+Equipo:
+David Carvajal 			- Ingeniero de software
+Claudia Fierro 			- Comunicadora social
+Mauricio Ruiz  			- Comunicadora social
+Santiago Marroquin	- Director de Talento Humano
 

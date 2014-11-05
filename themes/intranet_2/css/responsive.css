@@ -1,0 +1,9 @@
+.panels-flexible-region-1-usuario_on {
+  margin-right: 9px;
+}
+
+@media only screen and (max-width: 767px) {
+  .body {
+  	background: red;
+  }
+}

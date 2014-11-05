@@ -1,0 +1,31 @@
+/* Webfonts file */
+@font-face {
+  font-family: 'latoregular';
+  src: url('../webfont/lato-reg-webfont.eot');
+  src: url('../webfont/lato-reg-webfont.eot?#iefix') format('embedded-opentype'),
+       url('../webfont/lato-reg-webfont.woff') format('woff'),
+       url('../webfont/lato-reg-webfont.ttf') format('truetype'),
+       url('../webfont/lato-reg-webfont.svg#latoregular') format('svg');
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'latobold';
+  src: url('../webfont/lato-bol-webfont.eot');
+  src: url('../webfont/lato-bol-webfont.eot?#iefix') format('embedded-opentype'),
+       url('../webfont/lato-bol-webfont.woff') format('woff'),
+       url('../webfont/lato-bol-webfont.ttf') format('truetype'),
+       url('../webfont/lato-bol-webfont.svg#latobold') format('svg');
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'latolight';
+  src: url('../webfont/lato-lig-webfont.eot');
+  src: url('../webfont/lato-lig-webfont.eot?#iefix') format('embedded-opentype'),
+       url('../webfont/lato-lig-webfont.woff') format('woff'),
+       url('../webfont/lato-lig-webfont.ttf') format('truetype'),
+       url('../webfont/lato-lig-webfont.svg#latolight') format('svg');
+  font-weight: normal;
+  font-style: normal;
+}

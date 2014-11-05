@@ -1,0 +1,243 @@
+<?php
+
+/**
+ * Implements hook_permission().
+ */
+function intranet_links_permission() {
+  return array(
+    'Set shortcuts' => array(
+      'title' => t('Configurar accesos directos'),
+      'description' => t('Utilizar el wizard para realizar la configuración de accesos directos.'),
+    ),
+  );
+}
+
+
+/**
+ * Implements hook_block_info().
+ */
+function intranet_links_block_info() {
+  $blocks['intranet_shortcuts'] = array(
+    'info' => t('Mis accesos directos'),
+    'cache' => DRUPAL_NO_CACHE
+  );
+  return $blocks;
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function intranet_links_block_view($delta = '') {
+  $block = array();
+  switch ($delta) {
+    case 'intranet_shortcuts':
+      $block['subject'] = t('Mis accesos directos');
+      $block['content'] = intranet_shortcuts_block_content();
+      break;
+  }
+  return $block;
+}
+
+function intranet_shortcuts_block_content() {
+  $status = intranet_shorcuts_get_status();
+  $path = '/' . drupal_get_path('module', 'intranet_links');
+  drupal_add_js($path . '/js/intranet_links.js');
+  if ($status) {
+   $content = intranet_shortcuts_filled();
+   return $content;
+  }
+  else {
+    $build = array(
+      '#theme' => 'zurb_foundation_reveal',
+      '#reveal_classes_array' => array('medium'),
+      '#text' => 'Configurar mis accesos directos',
+      '#reveal' => drupal_render(drupal_get_form('intranet_shortcuts_wizard_form')),
+    );
+    return '<div class="no-links">' . drupal_render($build) . '</div>';
+  }
+}
+
+//Funcion que valida si el usuario ha diligenciado shorcuts o no
+function intranet_shorcuts_get_status(){
+  global $user;
+  $user_object = user_load($user->uid);
+  if (isset($user_object->field_accesos_directos['und'])) {
+    $shortcuts_array = $user_object->field_accesos_directos['und'];
+    if (sizeof($shortcuts_array)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function intranet_shortcuts_filled(){
+  $view = views_embed_view('mis_accesos_directos', 'block');
+  $build = array(
+    '#theme' => 'zurb_foundation_reveal',
+    '#reveal_classes_array' => array('medium'),
+    '#text' => 'Configurar mis accesos directos',
+    '#reveal' => drupal_render(drupal_get_form('intranet_shortcuts_wizard_form')),
+  );
+  return $view . drupal_render($build);
+}
+
+function intranet_shortcuts_get_nodes(){
+  $cache_flag = variable_get('mis_accesos_directos_cache_actializar_bandera', 1);
+  if ($cache_flag && $nodes_caches = cache_get('intranet_shortcuts_nodes')) {
+    return $nodes_caches->data;
+  }
+  else {
+    $query = new EntityFieldQuery();
+    $query->entityCondition('entity_type', 'node')
+          ->entityCondition('bundle', 'mis_accesos_directos')
+          ->propertyCondition('status', 1);
+    $result = $query->execute();
+    if (isset($result['node'])) {
+      foreach ($result['node'] as $key => $value) {
+        $shortcuts_nids[] = $value->nid;
+      }
+      $shortcuts_nodes = node_load_multiple($shortcuts_nids);
+      cache_set('intranet_shortcuts_nodes', $shortcuts_nodes);
+      variable_set('mis_accesos_directos_cache_actializar_bandera', 1);
+      watchdog('intranet_links', 'Se ha actualizado el cache de accesos directos', array(), WATCHDOG_NOTICE, 'Update cache');
+      return $shortcuts_nodes;
+    }
+    return FALSE;
+  }
+}
+
+
+function intranet_shortcuts_wizard_form($form, &$form_state) {
+  global $user;
+  $user_object = user_load($user->uid);
+  $shortcuts_array = array();
+  $shorcuts = array();
+  if (isset($user_object->field_accesos_directos['und'])) {
+    $shortcuts_array = $user_object->field_accesos_directos['und'];
+  }
+  foreach ($shortcuts_array as $keys => $values) {
+    $shorcuts[] = $values['target_id'];
+  }
+  $nodes = intranet_shortcuts_get_nodes();
+  $form['from'] = array(
+    '#type'=> 'item',
+    '#markup'=> _intranet_shorcuts_header_markup(),
+  );
+
+  $form['herramientas'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Herramientas'),
+    '#collapsible' => FALSE,
+    '#collapsed' => FALSE,
+    '#attributes' => array('class' => array('row collapse')),
+  );
+  foreach ($nodes as $key => $value) {
+    $default_status = 0;
+    $variables = array(
+      'title' => $value->title,
+      'alt' => $value->title,
+      'style_name' => 'mis_accesos_directos',
+    );
+    if (sizeof($value->field_acceso_icono)) {
+      $image_uri = $value->field_acceso_icono['und'][0]['uri'];
+    }
+    else {
+      $image_uri = 'public://screenshot.png';
+    }
+    $variables['path'] = $image_uri;
+    $image =  theme( 'image_style', $variables );
+    $form['herramientas'][$value->nid] = array(
+      '#type' => 'checkbox',
+      '#title' =>  $image . $value->title,
+      '#default_value' => $default_status,
+      '#prefix' => '<div class="shortcut-element">',
+      '#suffix' => '</div>',
+    );
+    if (in_array($value->nid,  $shorcuts)) {
+      $form['herramientas'][$value->nid]['#default_value'] = 1;
+      $form['herramientas'][$value->nid]['#prefix'] = '<div class="shortcut-element active">';
+    }
+  }
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Guardar configuración'),
+    '#ajax' => array(
+      'callback' => 'intranet_shortcuts_wizard_form_ajax',
+      'wrapper' => 'poll-choices',
+      'method' => 'replace',
+      'effect' => 'fade',
+    ),
+  );
+
+  return $form;
+}
+
+
+function _intranet_shorcuts_header_markup(){
+  $markup = '
+  <div class="shortcuts-title-wrapper">
+    <div class="d-title">' . t('<strong>Configurar</strong> mis accesos directos') . '</div>
+    <div class="d-description">' .t('Selecciona <strong>6 elementos</strong> para visualizar en tu perfil') . '</div>
+  </div>
+  ';
+  return $markup;
+}
+
+function intranet_shortcuts_wizard_form_ajax ($form, &$form_state) {
+  $shortcuts = array();
+  global $user;
+  $user_object = user_load($user->uid);
+  if(user_is_logged_in()){
+    $values = $form_state['values'];
+    foreach ($values as $key => $value) {
+      if ($value == 1) {
+        $shortcuts[]['target_id'] = $key;
+      }
+    }
+    $user_object->field_accesos_directos['und'] = $shortcuts;
+    user_save($user_object);
+    drupal_set_message(t('Accesos directos configurados correctamente'));
+  }
+  else {
+    ctools_include('ajax');
+    ctools_add_js('ajax-responder');
+    $commands[] = ctools_ajax_command_redirect('user/login');
+    print ajax_render($commands);
+    exit;
+  }
+  $commands = array();
+  $commands[] = ajax_command_invoke(NULL, 'your_custom_js', array());
+  return array(
+    '#type' => 'ajax',
+    '#commands' => $commands,
+  );
+}
+/* Cache flag */
+/**
+ * Implements hook_node_insert().
+ */
+function intranet_links_node_insert($node) {
+  if ($node->type == 'mis_accesos_directos') {
+    variable_set('mis_accesos_directos_cache_actializar_bandera', 0);
+  }
+}
+
+/**
+ * Implements hook_node_update().
+ */
+function intranet_links_node_update($node) {
+  if ($node->type == 'mis_accesos_directos') {
+    variable_set('mis_accesos_directos_cache_actializar_bandera', 0);
+  }
+}
+/**
+ * Implements hook_node_delete().
+ */
+function intranet_links_node_delete($node) {
+  if ($node->type == 'mis_accesos_directos') {
+    variable_set('mis_accesos_directos_cache_actializar_bandera', 0);
+  }
+}
+function intranet_core_get_user_profile_url($uid = FALSE){
+  return false;
+}

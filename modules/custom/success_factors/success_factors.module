@@ -1,0 +1,83 @@
+<?php
+
+/**
+ * @file
+ * Integration Manager module to Success Factors to load the user data
+ *
+ * Autor information: David Carvajal
+ * email: davidgcarvajal@gmail.com
+ */
+
+/**
+ * Implementation hook_user_login().
+ */
+function success_factors_user_login(&$edit, $account) {
+  require_once 'success_factors_core.inc';
+  sf_sync($account);
+}
+
+/**
+ * Validate if is need to sync the user with Success Factors
+ */
+function user_sync_validate($account) {
+  $last_login = $account->login;
+  if ($last_login!== 0) {
+    return TRUE;
+  }
+}
+
+/**
+ * Implements hook_menu().
+ */
+function success_factors_menu() {
+
+  $items['admin/success_factors'] = array(
+    'title' => 'Success factors',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('success_factors_form'),
+    'access arguments' => array('access content'),
+    'type' => MENU_SUGGESTED_ITEM,
+  );
+
+  return $items;
+}
+function success_factors_form($form, &$form_state, $example_id) {
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Sincronizar',
+  );
+  return $form;
+}
+
+function success_factors_form_submit($form, &$form_state) {
+  require_once 'success_factors_core.inc';
+  if ($soap_client = sf_connect()) {
+    $sfql = "SELECT id,lastModified,firstname,lastName,gender, username FROM user WHERE status = 'active'";
+    $result = sf_query($soap_client, $sfql);
+    if ($result) {
+      $users = entity_load('user');
+      foreach ($users as $keys => $values) {
+        $usrname = $values['name'];
+        if (isset($users_array[$usrname])) {
+          dpm($values);
+        }
+        //$users_array[$usrname] = $values;
+      }
+      foreach ($result as $key => $value) {
+        $username = $value['username'];
+        dpm($username);
+        //dpm($users_array[$username]);
+        //$sfarray[$username] = array('gender' => $value['gender']);
+      }
+      //dpm($sfarray);
+
+    }
+    else {
+      //Error
+    }
+    //dpm($result);
+  }
+  else {
+    drupal_set_message('error');
+  }
+}

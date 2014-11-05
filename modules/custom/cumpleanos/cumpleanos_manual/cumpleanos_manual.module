@@ -1,0 +1,113 @@
+  <?php
+/**
+ * @file
+ * El modulo esta encargado de la funcionalidad de enviar manualmente postales de cumpleaños
+ */
+/**
+ * Implements hook_menu().
+ */
+function cumpleanos_manual_menu() {
+  $items = array();
+  $items['admin/people/birthday/manual'] = array(
+    'title' => 'Envio manual',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('cumpleanos_manual_form'),
+    'access arguments' => array('administer birthday presents'),
+    'type' => MENU_SUGGESTED_ITEM,
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_form().
+ */
+function cumpleanos_manual_form($node, &$form_state) {
+  $form['email'] = array(
+    '#title' => t('Correo electronico'),
+    '#type' => 'textfield',
+    '#description' => t('Correo electrónico del usuario a enviar la postal de cumpleaños manual'),
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Enviar postal de cumpleaños'),
+  );
+  return $form;
+}
+
+function cumpleanos_manual_form_submit(&$form, &$form_state){
+  $email = $form_state['values']['email'];
+  if (valid_email_address($email)) {
+    if($user = user_load_by_mail($email)){
+      if(_cumpleanos_load_core()){
+        $email = $user->mail;
+        $name   = _cumpleanos_get_text_value('field_user_firstname',$user);
+        _cumpleanos_manua_send($email, $name, $user);
+      }
+    }
+    else {
+      drupal_set_message(t('El email ingresado no pertenece a ningún usuario registrado en la intranet'), 'error');
+    }
+  }
+  else{
+    drupal_set_message(t('El valor ingresado no parece ser un correo electrónico'), 'error');
+  }
+}
+
+function _cumpleanos_load_core(){
+  $module_name = NULL;
+  if (module_exists('cumpleanos_ruleta')) {
+    $module_name = 'cumpleanos_ruleta';
+  }
+  elseif (module_exists('cumpleanos')) {
+    $module_name = 'cumpleanos';
+  }
+  if($module_name) {
+    if(drupal_load('module', 'cumpleanos_ruleta')){
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+
+function _cumpleanos_manua_send($email, $name, $user){
+  if (_cumpleanos_email_send($email, $name, $user->uid)) {
+    $user_uid = $user->uid;
+    $account = $user;
+    $actual_year = format_date(REQUEST_TIME,"custom","Y");
+    $edit = array(
+      'field_birthday_postal' => array(
+        'und' => array(
+          0 => array(
+            'value' => $actual_year,
+          ),
+        ),
+      ),
+      'field_user_prize' => array(
+        'und' => array(
+          0 => array(
+            'value' => 0,
+          ),
+        ),
+      ),
+      'field_user_prize_reclaimed' => array(
+        'und' => array(
+          0 => array(
+            'value' => 0,
+          ),
+        ),
+      ),
+    );
+    $new_account = user_save($account, $edit);
+    $message = 'Postal de cumpleaños enviada a: ' . $email;
+    drupal_set_message($message);
+    watchdog('cumpleaños', $message, array(), WATCHDOG_NOTICE);
+    if (function_exists('_cumpleanos_log')) {
+      _cumpleanos_log($email);
+    }
+  }
+  else {
+    _cumpleanos_error_handler($email);
+  }
+}

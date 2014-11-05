@@ -1,0 +1,29 @@
+<?php
+
+/**
+ * @file
+ * Installation file for the cumpleaños module
+ */
+
+/**
+ * Implements hook_install().
+ */
+function cumpleanos_install() {
+  variable_set('cumpleanos_status', '1');
+  variable_set('cumpleanos_time', '6');
+  variable_set('cumpleanos_body', 'initial');
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function cumpleanos_uninstall() {
+  variable_del('cumpleanos_status');
+  variable_del('cumpleanos_time');
+  variable_del('cumpleanos_body');
+}
+
+function _cumpleanos_email_body_default_content(){
+  $content = 'body por defecto';
+  return $content;
+}

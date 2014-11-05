@@ -1,0 +1,153 @@
+<?php
+/**
+* Implentation of hook_menu
+**/
+
+function calender_menu() {
+  $items = array();
+  $items['ajax_calender'] = array(
+    'page callback' => 'ajax_link_calender',
+    'access callback' => 'user_access',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK
+  );
+  return $items;
+}
+
+/**
+* Implentation of hook_block_view
+**/
+
+function calender_block_view($delta = '') {
+  $block = array();
+  switch ($delta) {
+    case 'ajax_calender_view':
+      $block['content'] = view_calendario();
+      break;
+  }
+  return $block;
+}
+
+/**
+* Implentation of hook_blocl_info
+**/
+function calender_block_info() {
+  $blocks['ajax_calender_view'] = array(
+    'info' => 'Bloque: Calendario oficinas',
+  );
+  return $blocks;
+}
+
+
+function view_calendario() {
+  $output = '';
+  drupal_add_library('system', 'drupal.ajax');
+  drupal_add_css(drupal_get_path('module', 'calender') . '/css/calender.css', array('group' => CSS_DEFAULT, 'every_page' => FALSE));  
+  drupal_add_js(drupal_get_path('module', 'calender') . '/js/calender.js', array('group' => JS_DEFAULT, 'every_page' => FALSE));  
+  $date_first = date('m') - 1;
+  $date_last = date('m') + 1;
+  $view = views_get_view('calendario_eventos');
+  $view->set_arguments(array(date('Y-m'), 'festivos'));
+  $display = $view->execute_display('block');
+  $view_eventos = views_get_view('calendario_eventos');
+  $view_eventos->set_arguments(array(date('Y-m'), 'eventos'));
+  $display_eventos = $view_eventos->execute_display('block');
+  $output .= '<div id="calendario">';
+  $output .= '<div class="t-picker">';
+  $output .= '<div class="t-monthname">' . strtoupper(t(date('F'))) . ' ' . date('Y') . '</div>';
+  $output .= l('', 'ajax_calender/nojs/'. $date_first .'/'. date('Y'), array('attributes' => array('class' => array('use-ajax','t-atrasaja'))));
+  $output .= l('', 'ajax_calender/nojs/'. $date_last .'/'. date('Y'), array('attributes' => array('class' => array('use-ajax','t-adelanteaja'))));
+  $output .= '</div>';
+  if ( $display_eventos['content'] != '') {
+    $output .= '<div class="eventos t-contiene">'; 
+    $output .=  $display_eventos['content'];
+    $output .= '</div>';
+  }
+  if ($display['content'] != '') {
+    $output .= '<div class="festivos t-contiene">';
+    $output .=  $display['content'];
+    $output .= '</div>';
+  }
+  $output .= '</div>';
+  return $output;
+}
+
+function ajax_link_calender($type = 'ajax', $date, $year) {
+  if ($type == 'ajax') {
+    $first = date_first($date, $year);
+    $last  = date_last($date, $year);
+    $actual = date_first($date+1,$year);
+    $view = views_get_view('calendario_eventos');
+    $view->set_arguments(array($year .'-'. $date, 'festivos'));
+    $display = $view->execute_display('block');
+    $view_eventos = views_get_view('calendario_eventos');
+    $view_eventos->set_arguments(array($year .'-'. $date, 'eventos'));
+    $display_eventos = $view_eventos->execute_display('block');
+    $output .= '<div class="t-picker">';
+    $output .= '<div class="t-monthname">' . strtoupper(t(meses($actual['month']))) . ' ' . $actual['year'] . '</div>';
+    $output .= l('', 'ajax_calender/nojs/'. $first['month'] .'/'. $first['year'], array('attributes' => array('class' => array('use-ajax','t-atrasaja'))));
+    $output .= l('', 'ajax_calender/nojs/'. $last['month'] .'/'. $last['year'] , array('attributes' => array('class' => array('use-ajax','t-adelanteaja'))));
+    $output .= '</div>';
+    if ( $display_eventos['content'] != '') {
+      $output .= '<div class="eventos t-contiene">'; 
+      $output .=  $display_eventos['content'];
+      $output .= '</div>';
+    }
+    if ($display['content'] != '') {
+      $output .= '<div class="festivos t-contiene">';
+      $output .=  $display['content'];
+      $output .= '</div>';
+    }
+    $output .= '</div>';
+    $commands = array();
+    $commands[] = ajax_command_html('#calendario', $output);
+    $page = array('#type' => 'ajax', '#commands' => $commands);
+    ajax_deliver($page);
+  }
+  else {
+    $output = t("This is some content delivered via a page load.");
+    return $output;
+  }
+}
+
+function date_first($date, $year) {
+  if($date == 1){
+    return array('month' => 12, 'year' => $year - 1);
+  }
+  else if($date < 1){
+    return array('month' => 1, 'year' => $year - 1);
+  }
+  else{
+    return array('month' => $date - 1, 'year' => $year );
+  }
+}
+
+function date_last($date, $year) {
+  if($date > 12){
+    return array('month' =>12, 'year' => $year);
+  }
+  else if($date == 12){
+    return array('month' =>1, 'year' => $year + 1);
+  }
+  else{
+    return array('month' => $date + 1, 'year' => $year);
+  }
+}
+
+function meses($mes) {
+  $nombre_mes = array (
+  '1' => 'January',
+  '2' => 'February',
+  '3' => 'March',
+  '4' => 'April',
+  '5' => 'May',
+  '6' => 'June',
+  '7' => 'July',
+  '8' => 'August',
+  '9' => 'September',
+  '10' => 'October',
+  '11' => 'November',
+  '12' => 'December',
+  );
+  return($nombre_mes[$mes]);
+}

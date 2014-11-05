@@ -1,0 +1,5 @@
+name = File type
+description = Asignar una imagen del tipo de archivo a los documentos
+core = 7.x
+package = Proexport
+files[] = file_type.module

@@ -1,0 +1,4 @@
+name = Single sign on Intranet
+description = Single sign on de la intranet
+core = 7.x
+package = Proexport

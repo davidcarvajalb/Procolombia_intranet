@@ -1,0 +1,509 @@
+  <?php
+/**
+ * @file
+ * El modulo de cumpleaños programa el envio automatico de postales de cumpleaños,
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function cumpleanos_ruleta_menu() {
+  $items['admin/people/birthday'] = array(
+    'title' => 'Cumpleaños',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('cumpleanos_general_settings_form'),
+    'access arguments' => array('administer birthday presents'),
+    'type' => MENU_SUGGESTED_ITEM,
+  );
+  $items['admin/people/birthday/ruleta'] = array(
+    'title' => 'Cumpleaños ruleta',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('cumpleanos_general_settings_form'),
+    'access arguments' => array('administer birthday presents'),
+    'type' => MENU_SUGGESTED_ITEM,
+  );
+  $items['institucional/cumpleanos'] = array(
+    'title' => 'Feliz Cumpleaños',
+    'page callback' => '_cumpleanos_mail_load_theme',
+	  'access arguments' => array('birthday'),
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+
+
+/**
+ * Implements hook_permission().
+ */
+function cumpleanos_ruleta_permission() {
+  return array(
+    'administer birthday presents' =>  array(
+      'title' => t('Administrar modulo de cumpleaños'),
+      'description' => t('Realizar tareas de administración para el modulo de envio de postales de cumpleaños.'),
+    ),
+    'birthday' =>  array(
+      'title' => t('Acceder a la ruleta de premios'),
+      'description' => t('Acceder a la ruleta de premios de cumpleaños.'),
+    ),
+  );
+}
+
+/**
+ * General configuration form.
+ *
+ * @return Assoc
+ *   renderable form.
+ */
+
+/**
+ * Implements hook_form().
+ */
+function cumpleanos_general_settings_form($node, &$form_state) {
+  //_cumpleanos_send_birthday();
+  $hora = variable_get('cumpleanos_time');
+  $status = variable_get('cumpleanos_status');
+
+  $form['onoff'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Opciones de instalación'),
+    '#collapsible' => FALSE,
+    '#collapsed' => FALSE,
+  );
+  $form['onoff']['active'] = array(
+    '#type' => 'radios',
+    '#title' => t('APAGAR O ENCENDER ESTE MÓDULO'),
+    '#default_value' => $status,
+    '#options' => array(t('Desactivado'), t('Activado')),
+    '#description' => t('Permitir que se envíen o no las postales a través de este medio'),
+  );
+  $form['settings'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Configuración del modulo'),
+    '#collapsible' => FALSE,
+    '#collapsed' => FALSE,
+  );
+  $form['settings']['hora'] = array(
+    '#title' => t('Hora de envio'),
+    '#type' => 'textfield',
+    '#default_value' => $hora,
+    '#description' => t('Esta es una hora aproximada y depende del servidor'),
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Guardar configuración'),
+  );
+  return $form;
+}
+
+/**
+ * Handle post_validate form submission.
+ */
+
+function cumpleanos_general_settings_form_submit(&$form, &$form_state){
+  $status = $form_state['values']['active'];
+  $hora = $form_state['values']['hora'];
+  $server_path = 'http://' . $_SERVER['HTTP_HOST'];
+  variable_set('cumpleanos_status',$status);
+  variable_set('cumpleanos_time',$hora);
+}
+
+function _cumpleanos_validate_user_to_load($user){
+  $current_unix_date = format_date(REQUEST_TIME,"custom","n-j");
+  $day = _cumpleanos_get_text_value('field_user_birthday',$user);
+  $month = _cumpleanos_get_text_value('field_user_birthmonth',$user);
+  $actual_year = format_date(REQUEST_TIME,"custom","Y");
+  $yesterday_seconds = (REQUEST_TIME - (60 * 60 * 24));
+  $yesterday_unix_date = format_date($yesterday_seconds ,"custom","n-j");
+  $birthdate = $month . '-' . $day;
+  $status[] = true;
+  $status[] = ($user->status == 1) ? true : false;
+  $status[] = ($user->mail) ? true : false;
+  $status[] = ($user->field_user_birthday) ? true : false;
+  $status[] = ($user->field_user_birthmonth) ? true : false;
+  $birthday_postal_status = '';
+  if (isset($user->field_birthday_postal['und'])) {
+    $birthday_postal_status = $user->field_birthday_postal['und'][0]['value'];
+  }
+  if (!$birthday_postal_status OR $birthday_postal_status != $actual_year ) {
+    $status[] = true;
+  }
+  else{
+    $status[] = false;
+  }
+  if ($birthdate == $current_unix_date || $birthdate == $yesterday_unix_date || _harley_bisiesto($birthdate,$current_unix_date)) {
+    $status[] = true;
+  }
+  else{
+    $status[] = false;
+  }
+  foreach ($status as $value) {
+    if (!$value) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Implements hook_cron().
+ */
+function cumpleanos_ruleta_cron() {
+  $status = variable_get('cumpleanos_status');
+  if (_cumpleanos_send_time_validate() AND $status) {
+    _cumpleanos_send_birthday();
+  }
+}
+
+function _cumpleanos_send_time_validate(){
+  $scheduled_send = variable_get('cumpleanos_time');
+  $current_unix_time_h 	= format_date(REQUEST_TIME,"custom","G");
+  $lower_limit 			= $scheduled_send - 2 ;
+  $upper_limit 			= $scheduled_send + 2 ;
+  if ($current_unix_time_h >= $lower_limit AND $current_unix_time_h <= $upper_limit) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+function _cumpleanos_send_birthday(){
+  $all_site_users = entity_load('user');
+  $actual_year = format_date(REQUEST_TIME,"custom","Y");
+  foreach ($all_site_users as $key) {
+    if (_cumpleanos_validate_user_to_load($key)) {
+      $uid = $key->uid;
+      $mail = $key->mail;
+      $first_name = _cumpleanos_get_text_value('field_user_firstname',$key);
+      $day = _cumpleanos_get_text_value('field_user_birthday',$key);
+      $month = _cumpleanos_get_text_value('field_user_birthmonth',$key);
+      $birthdate = $month . '-' . $day;
+      $users_without_present[] = array('uid'=> $uid, 'mail' => $mail , 'firstname' => $first_name, 'birthdate'=> $birthdate);
+    }
+  }
+  //return false;
+  if(sizeof($users_without_present)){
+    foreach ($users_without_present as $value) {
+      $email	= $value['mail'];
+      $name  	= $value['firstname'];
+	    $uid		= $value['uid'];
+      if (_cumpleanos_email_send($email, $name, $uid)) {
+        $user_uid = $value['uid'];
+        $account = user_load($user_uid);
+        $edit = array(
+          'field_birthday_postal' => array(
+            'und' => array(
+              0 => array(
+                'value' => $actual_year,
+              ),
+            ),
+          ),
+          'field_user_prize' => array(
+            'und' => array(
+              0 => array(
+                'value' => 0,
+              ),
+            ),
+          ),
+          'field_user_prize_reclaimed' => array(
+            'und' => array(
+              0 => array(
+                'value' => 0,
+              ),
+            ),
+          ),
+        );
+        $new_account = user_save($account, $edit);
+        _cumpleanos_log($email);
+      }
+    }
+  }
+  /* fin codigo cron */
+}
+
+function _cumpleanos_log($email){
+  $message = 'Postal de cumpleaños enviada a: ' . $email;
+  // Create a node object, and add node properties.
+  $newNode = (object) NULL;
+  $newNode->type = 'log_de_las_postales';
+  $newNode->uid = 1;
+  $newNode->created = strtotime("now");
+  $newNode->changed = strtotime("now");
+  $newNode->status = 0;
+  $newNode->comment = 0;
+  $newNode->promote = 0;
+  $newNode->moderate = 0;
+  $newNode->sticky = 0;
+  $newNode->language = 'und';
+  $newNode->title = $message;
+  node_save($newNode);
+}
+function _cumpleanos_get_text_value($field, $item){
+  $array = (array) $item;
+  $value = '';
+  if (isset($array[$field]['und'])) {
+   $value = $array[$field]['und'][0]['value'];
+  }
+  return $value;
+}
+
+/**
+ * Implements hook_theme().
+ */
+function cumpleanos_ruleta_theme($existing, $type, $theme, $path) {
+  return array(
+    'birthday_mail' => array(
+      'render element' => '',
+      'template' => 'birthday_mail',
+      'path' => drupal_get_path('module', 'cumpleanos_ruleta') .'/theme/mails'
+    ),
+    'birthday_reclaim_prize_hr_mail' => array(
+      'render element' => '',
+      'template' => 'birthday_reclaim_prize_hr_mail',
+      'path' => drupal_get_path('module', 'cumpleanos_ruleta') .'/theme/mails'
+    ),
+    'birthday_reclaim_prize_mail' => array(
+      'render element' => '',
+      'template' => 'birthday_reclaim_prize_mail',
+      'path' => drupal_get_path('module', 'cumpleanos_ruleta') .'/theme/mails'
+    ),
+    'birthday_roulette' => array(
+      'render element' => '',
+      'template' => 'birthday_roulette',
+      'path' => drupal_get_path('module', 'cumpleanos_ruleta') .'/theme/roulette'
+    ),
+  );
+}
+
+/**
+ * Implements hook_controller_api().
+ */
+function cumpleanos_ruleta_controller_api() {
+  return '2.x';
+}
+
+function _cumpleanos_email_send($email, $name, $uid){
+  $user_fields		= user_load($uid);
+  $roulette_url 	= _cumpleanos_resolve_URL(). '/institucional/cumpleanos/' . $uid;
+  $birthday_image	= _cumpleanos_resolve_URL() . drupal_get_path('module', 'cumpleanos_ruleta') .'/theme/roulette/img/cumple-proexport.jpg';
+  $logo = file_get_contents(drupal_get_path('module', 'cumpleanos_ruleta') . '/theme/mails/logo.php');
+  $firstname 		= _cumpleanos_get_text_value('field_user_firstname', $user_fields);
+  $lastname 		= _cumpleanos_get_text_value('field_user_lastname', $user_fields);
+  $variables		= array(
+  	'firstname' 	=> $firstname,
+  	'lastname' 		=> $lastname,
+  	'roulette_url'	=> $roulette_url,
+  	'birthday_image'=> $birthday_image,
+    'logo' => $logo
+  );
+  $body = theme('birthday_mail', $variables);
+  $my_module = 'cumpleanos';
+  $my_mail_token  = 'bar';
+  $from = 'Talento Proexport <talentohumano@proexport.com.co>';
+  $message 			= array(
+    'to' 		=> $email,
+    'subject' 	=> t('Feliz cumpleaños') . ' ' . $name,
+    'body' 		=> $body,
+    'headers' 	=> array(
+	    'From' 			=> $from,
+	    'Sender' 		=> $from,
+	    'Return-Path' 	=> $from,
+	    'MIME-Version' 	=> '1.0',
+	    'Content-Type' 	=> 'text/html;charset=utf-8',
+	),
+  );
+  $system = drupal_mail_system($my_module, $my_mail_token);
+  $system->mail($message);
+  return TRUE;
+}
+
+function _cumpleanos_error_handler($email){
+  $message = 'Error enviando la postal de cumpleaños a:' . $email;
+  watchdog('cumpleaños', $message, array(), WATCHDOG_WARNING);
+}
+
+function _harley_bisiesto($birthdate, $current_unix_date){
+  if (!_es_bisiesto() && $birthdate == '2-29' && $current_unix_date == '2-28') {
+    return true;
+  }
+  return false;
+}
+
+function _es_bisiesto(){
+  $actual = date("Y");
+  if(!checkdate(02,29,$actual)){
+    return false;
+  }else{
+    return true;
+  }
+}
+
+function _cumpleanos_mail_load_theme () {
+	//global $user;
+	global $base_path;
+	$uid 			= arg(2);
+	$page 			= (arg(3) != NULL) ? arg(3) : 'default';
+	$action 		= (arg(4) != NULL) ? arg(4) : NULL;
+	$user_fields 	= user_load($uid);
+	$user_prize 	= array();
+
+	if($page == 'prize') {
+		$user_prize = _cumpleanos_get_prize_info ($user_fields);
+	}
+	if($action == 'reclaim') {
+		_cumpleanos_reclaim_prize ($user_fields);
+	}
+
+	$display_alert  = _cumpleanos_get_text_value('field_user_prize_reclaimed', $user_fields);
+
+	$firstname 		= _cumpleanos_get_text_value('field_user_firstname', $user_fields);
+	$lastname 		= _cumpleanos_get_text_value('field_user_lastname', $user_fields);
+	$file 			= DRUPAL_ROOT . '/' . drupal_get_path('module', 'cumpleanos_ruleta') . '/theme/roulette/includes/' . $page . '.tpl.php';
+	$theme_path		= $base_path . drupal_get_path('module', 'cumpleanos_ruleta') . '/theme/';
+	$variables		= array(
+  	'page' 			=> $page,
+  	'user_prize' 	=> $user_prize,
+  	'display_alert' => $display_alert,
+  	'firstname' 	=> $firstname,
+  	'lastname' 		=> $lastname,
+  	'file'			=> $file,
+  	'base_path'		=> $base_path,
+  	'theme_path'	=> $theme_path,
+  	'uid'			=> $uid,
+  );
+	print theme('birthday_roulette', $variables);
+}
+
+function _cumpleanos_get_prize ($user_fields) {
+
+	if((_cumpleanos_get_text_value('field_user_prize', $user_fields) == '') || (intval(_cumpleanos_get_text_value('field_user_prize', $user_fields)) == 0)) {
+		_cumpleanos_set_prize ($user_fields);
+	}
+
+	return _cumpleanos_get_text_value('field_user_prize', $user_fields);
+}
+
+function _cumpleanos_set_prize ($user_fields) {
+
+	$user_prize = rand(1, 6);
+	while($user_prize == 3)
+		$user_prize = rand(1, 6);
+    $edit 		= array(
+        'field_user_prize' => array(
+          	'und' => array(
+            	0 => array(
+              		'value' => $user_prize,
+            	),
+        	),
+    	),
+    );
+    $user = user_save($user_fields, $edit);
+}
+
+function _cumpleanos_get_prize_info ($user_fields) {
+
+	$prize 		= _cumpleanos_get_prize ($user_fields);
+	$prizeInfo	= array('name' => '', 'number' => $prize, 'has_coupon' => false, 'coupon_image' => '');
+	switch (intval($prize)) {
+		case 1:
+			$prizeInfo["name"] 			= 'Un día libre';
+			$prizeInfo["has_coupon"] 	= TRUE;
+			$prizeInfo["coupon_image"] 	= 'bono1.jpg';
+			break;
+		case 2:
+			$prizeInfo["name"] = 'Una espectacular cena para dos';
+			break;
+		case 3:
+			$prizeInfo["name"] = 'Un bono cultural';
+			break;
+		case 4:
+			$prizeInfo["name"] = 'Medio día libre';
+			$prizeInfo["has_coupon"] 	= TRUE;
+			$prizeInfo["coupon_image"] 	= 'bono2.jpg';
+			break;
+		case 5:
+			$prizeInfo["name"] = 'Entradas a cine para dos';
+			break;
+		case 6:
+			$prizeInfo["name"] = 'Un regalo sorpresa';
+			break;
+	}
+
+	return $prizeInfo;
+}
+
+function _cumpleanos_reclaim_prize ($user_fields) {
+	$email_sent 	= FALSE;
+
+	if(_cumplenos_send_reclaim_prize_emails ($user_fields)) {
+	    $edit 		= array(
+	        'field_user_prize_reclaimed' => array(
+	          	'und' => array(
+	            	0 => array(
+	              		'value' => 1,
+	            	),
+	        	),
+	    	),
+	    );
+	    $user = user_save($user_fields, $edit);
+		$email_sent = TRUE;
+	}
+
+	return $email_sent;
+
+}
+
+function _cumplenos_send_reclaim_prize_emails ($user_fields) {
+  $user_prize 		= _cumpleanos_get_prize_info ($user_fields);
+  $firstname 		= _cumpleanos_get_text_value('field_user_firstname', $user_fields);
+  $lastname 		= _cumpleanos_get_text_value('field_user_lastname', $user_fields);
+  $coupon_url 		= _cumpleanos_resolve_URL() . drupal_get_path('module', 'cumpleanos_ruleta') .'/theme/roulette/img/' . $user_prize["coupon_image"];
+  $variables		= array(
+						'user_prize' 	=> $user_prize,
+						'firstname' 	=> $firstname,
+						'lastname' 		=> $lastname,
+						'coupon_url'	=> $coupon_url
+					  );
+  $body = theme('birthday_reclaim_prize_hr_mail', $variables);
+  $my_module 		= 'cumpleanos_ruleta';
+  $my_mail_token 	= 'bar';
+  $from 			= 'Talento Proexport <talentohumano@proexport.com.co>';
+  $message 			= array(
+    'to' 			=> 'talentohumano@proexport.com.co',
+    'subject' 		=> t('Funcionario Proexport acaba de reclamar regalo') . ' ' . _cumpleanos_get_text_value('fied_user_firstname', $user_fields),
+    'body' 			=> $body,
+    'headers' 		=> array(
+    'From' 			=> $from,
+    'Sender' 		=> $from,
+    'Return-Path' 	=> $from,
+    'MIME-Version' 	=> '1.0',
+    'Content-Type' 	=> 'text/html;charset=utf-8',),
+  );
+  $system = drupal_mail_system($my_module, $my_mail_token);
+  $system->mail($message);
+  $body = theme('birthday_reclaim_prize_mail', $variables);
+  $message = array();
+  $to_user_2 = $user_fields->mail;
+  $bandera_user_2 = strpos($to_user_2, 'talentohumano@proexport.com.co');
+  if ($bandera_user_2 === false) {
+    $message 	= array(
+      'to' 			=> $to_user_2,
+      'subject' 		=> t('Feliz cumpleaños') . ' ' . _cumpleanos_get_text_value('fied_user_firstname', $user_fields),
+      'body' 			=> $body,
+      'headers' 		=> array(
+  	    'From' 			=> $from,
+  	    'MIME-Version' 	=> '1.0',
+  	    'Content-Type' 	=> 'text/html;charset=utf-8',
+  	  ),
+    );
+    $system2 = drupal_mail_system($my_module, $my_mail_token);
+    $system2->mail($message);
+  }
+  return TRUE;
+}
+
+function _cumpleanos_resolve_URL ()
+{
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+    $domainName = $_SERVER['HTTP_HOST'].'/';
+    return $protocol.$domainName;
+}

@@ -1,0 +1,8 @@
+name        = Premios de cumpleaños
+description = Tema de premios de cumpleaños Proexport
+screenshot  = screenshot.png
+
+core        = 7.x
+engine      = phptemplate
+
+stylesheets[all][] = style.css

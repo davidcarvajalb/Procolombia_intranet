@@ -1,0 +1,126 @@
+#vacantes-form .t-vacantehead h1{
+  color: #094FA2;
+  margin: 10px 0px;
+  text-transform: capitalize;
+}
+#vacantes-form .form-wrapper {
+  position: relative;
+  border: 0;
+  border-top: solid 1px #EBEBEB;
+}
+#vacantes-form .title_vacantes {
+  margin: 0px;
+  color: #5F5F5F;
+  font-size: 90%;
+  font-family: arial;
+  margin: 0px;
+  margin-bottom: 5px;
+}
+#vacantes-form .date_vacantes {
+  margin: 0px;
+  text-align: right;
+  right: 0px;
+  color: #DD2732;
+  font-size: 70%;
+  font-weight: lighter;
+  position: absolute;
+  right: 0px;
+  top: 13px;
+}
+#vacantes-form .date_vacantes .placeholder {
+  font-style: normal;
+}
+#vacantes-form .cuerpor_vacantes {
+  font-family: arial;
+  color: #5F5F5F;
+  line-height: 14px;
+  font-size: 80%;
+  text-align: justify;
+}
+#vacantes-form .more_vacantes {
+  margin: 0px;
+  padding: 1px;
+  list-style: none;
+  width: 134px;
+  text-align: center;
+  border: solid #D7D7D7 1px;
+  -webkit-border-radius: 4px;
+  -moz-border-radius: 4px;
+  border-radius: 4px;
+  background: URL("../images/bkg-boton.png") center center repeat-x;
+  float: right;
+  margin: 15px 0px;
+}
+#vacantes-form .more_vacantes a {
+  font-family: MyriadProRegular,sans-serif;
+  color: #646464;
+  font-size: 95%;
+  text-shadow: 0px 0px 5px white;
+  display: block;
+}
+#vacantes-form .more_vacantes a:hover{
+  text-decoration: none;
+}
+#vacantes-form .more_vacantes:hover{
+  -moz-opacity: 0.80;
+  opacity: 0.80;
+  -ms-filter:"progid:DXImageTransform.Microsoft.Alpha"(Opacity=80);
+}
+#vacantes-form .form-type-checkbox {
+  position: absolute;
+  right: 160px;
+  font-family: MyriadProRegular ,sans-serif;
+  color: #646464;
+}
+#vacantes-form input[type="submit"]{
+  text-shadow: 0px -1px 0px #154971;
+  filter: dropshadow(color=#154971, offx=0, offy=-1);
+  font-weight: bold;
+  color: white;
+  background: URL('../images/bkg-submit-webform.png') center center repeat-x;
+  -webkit-box-shadow: none;
+  box-shadow: none;
+  cursor: pointer;
+  -webkit-border-radius: 4px;
+  -moz-border-radius: 4px;
+  border-radius: 4px;
+  font-family: arial;
+  padding: 0px 10px;
+  height: 30px;
+  border: 0;
+ font-size: 95%;
+  margin-top: 30px;
+  margin-left: 200px;
+}
+#vacantes-form input[type="submit"]:hover,
+.vacante-buttom:hover{
+  -moz-opacity: 0.80;
+  opacity: 0.80;
+  -ms-filter:"progid:DXImageTransform.Microsoft.Alpha"(Opacity=80);
+}
+.field-name-aplicar-vacante-detalle{
+  margin-top: 20px;
+}
+.vacante-buttom{
+  text-shadow: 0px -1px 0px #154971;
+  filter: dropshadow(color=#154971, offx=0, offy=-1);
+  font-weight: bold;
+  color: white;
+  width: 178px;
+  background: URL('../images/bkg-submit-webform.png') center center repeat-x;
+  -webkit-box-shadow: none;
+  box-shadow: none;
+  cursor: pointer;
+  -webkit-border-radius: 4px;
+  -moz-border-radius: 4px;
+  border-radius: 4px;
+  font-family: arial;
+  padding: 0px 10px;
+  height: 30px;
+  border: 0;
+  font-size: 95%;
+  height: 30px;
+  display: block;
+  text-align: center;
+  line-height: 30px;
+}

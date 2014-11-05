@@ -1,0 +1,6 @@
+name = Success factors integration
+description = Integración de usuarios con LDAP y con SF
+core = 7.x
+package = Proexport
+files[] = success_factors.module
+files[] = success_factors.install

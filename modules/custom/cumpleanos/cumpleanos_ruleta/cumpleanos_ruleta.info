@@ -1,0 +1,7 @@
+name = Postales de cumpleaños ruleta
+description = Envios programados de postales con la ruleta en las fechas de cumpleaños de los usuarios
+core = 7.x
+package = Proexport
+version = "2"
+files[] = cumpleanos_ruleta.install
+configure = admin/people/birthday

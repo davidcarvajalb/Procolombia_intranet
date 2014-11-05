@@ -1,0 +1,47 @@
+<?php
+function success_factors_schema() {
+  $schema = array();
+  /** Tabla success_factors_reference **/
+  $schema['success_factors_reference'] = array(
+    'fields' => array(
+      'uid' => array(
+        'type' => 'int',
+        'size' => 'small'
+      ),
+      'sf_uid' => array(
+        'type' => 'varchar',
+        'length' => 20,
+      ),
+      'last_sync' => array(
+        'type' => 'int',
+        'size' => 'big'
+      ),
+    ),
+    'primary key' => array('uid'),
+  );
+  return $schema;
+}
+
+function success_factors_install() {
+  // Create my tables.
+  $temp_path = 'public://temp';
+  $user_images_path = 'public://user_images';
+  if (!drupal_get_schema('success_factors_reference')) {
+    drupal_install_schema('success_factors');
+  }
+  if (file_prepare_directory($temp_path) OR drupal_mkdir($temp_path)) {
+    $temp_image_path = $temp_path . '/user_images';
+    if (!file_prepare_directory($temp_image_path)) {
+     drupal_mkdir($temp_image_path);
+    }
+  };
+  if (!file_prepare_directory($user_images_path)) {
+    drupal_mkdir($user_images_path);
+  }
+}
+
+function success_factors_uninstall() {
+  // Drop my tables.
+  drupal_uninstall_schema('success_factors');
+}
+

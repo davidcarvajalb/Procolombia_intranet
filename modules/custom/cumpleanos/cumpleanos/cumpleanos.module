@@ -1,0 +1,257 @@
+  <?php
+/**
+ * @file
+ * El modulo de cumpleaños programa el envio automatico de postales de cumpleaños,
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function cumpleanos_menu() {
+  $items['admin/people/birthday'] = array(
+    'title' => 'Cumpleaños',
+
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('cumpleanos_general_settings_form'),
+    'access arguments' => array('administer birthday presents'),
+    'type' => MENU_SUGGESTED_ITEM,
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function cumpleanos_permission() {
+  return array(
+    'administer birthday presents' =>  array(
+      'title' => t('Administrar modulo de cumpleaños'),
+      'description' => t('Realizar tareas de administración para el modulo de envio de postales de cumpleaños.'),
+    ),
+  );
+}
+
+/**
+ * General configuration form.
+ *
+ * @return Assoc
+ *   renderable form.
+ */
+
+/**
+ * Implements hook_form().
+ */
+function cumpleanos_general_settings_form($node, &$form_state) {
+  $hora = variable_get('cumpleanos_time');
+  $status = variable_get('cumpleanos_status');
+  $form['onoff'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Opciones de instalación'),
+    '#collapsible' => FALSE,
+    '#collapsed' => FALSE,
+  );
+  $form['onoff']['active'] = array(
+    '#type' => 'radios',
+    '#title' => t('APAGAR O ENCENDER ESTE MÓDULO'),
+    '#default_value' => $status,
+    '#options' => array(t('Desactivado'), t('Activado')),
+    '#description' => t('Permitir que se envíen o no las postales a través de este medio'),
+  );
+  $form['settings'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Configuración del modulo'),
+    '#collapsible' => FALSE,
+    '#collapsed' => FALSE,
+  );
+  $form['settings']['hora'] = array(
+    '#title' => t('Hora de envio'),
+    '#type' => 'textfield',
+    '#default_value' => $hora,
+    '#description' => t('Esta es una hora aproximada y depende del servidor'),
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Guardar configuración'),
+  );
+  return $form;
+}
+
+/**
+ * Handle post_validate form submission.
+ */
+
+function cumpleanos_general_settings_form_submit(&$form, &$form_state){
+  $status = $form_state['values']['active'];
+  $hora = $form_state['values']['hora'];
+  $server_path = 'http://' . $_SERVER['HTTP_HOST'];
+  variable_set('cumpleanos_status',$status);
+  variable_set('cumpleanos_time',$hora);
+}
+
+function _cumpleanos_validate_user_to_load($user){
+  $current_unix_date = format_date(REQUEST_TIME,"custom","n-j");
+  //$current_unix_date = '1-22';
+  $day = _cumpleanos_get_text_value('field_user_birthday',$user);
+  $month = _cumpleanos_get_text_value('field_user_birthmonth',$user);
+  $actual_year = format_date(REQUEST_TIME,"custom","Y");
+  $yesterday_seconds = (REQUEST_TIME - (60 * 60 * 24));
+  $yesterday_unix_date = format_date($yesterday_seconds ,"custom","n-j");
+  $birthdate = $month . '-' . $day;
+  $status[] = true;
+  $status[] = ($user->status == 1) ? true : false;
+  $status[] = ($user->mail) ? true : false;
+  $status[] = ($user->field_user_birthday) ? true : false;
+  $status[] = ($user->field_user_birthmonth) ? true : false;
+  $birthday_postal_status = '';
+  if (isset($user->field_birthday_postal['und'])) {
+    $birthday_postal_status = $user->field_birthday_postal['und'][0]['value'];
+  }
+  if (!$birthday_postal_status OR $birthday_postal_status != $actual_year ) {
+    $status[] = true;
+  }
+  else{
+    $status[] = false;
+  }
+  if ($birthdate == $current_unix_date || $birthdate == $yesterday_unix_date || _harley_bisiesto($birthdate,$current_unix_date)) {
+    $status[] = true;
+  }
+  else{
+    $status[] = false;
+  }
+  foreach ($status as $value) {
+    if (!$value) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Implements hook_cron().
+ */
+function cumpleanos_cron() {
+  $status = variable_get('cumpleanos_status');
+  if (_cumpleanos_send_time_validate() AND $status) {
+    _cumpleanos_send_birthday();
+  }
+}
+
+function _cumpleanos_send_time_validate(){
+  $scheduled_send = variable_get('cumpleanos_time');
+  $current_unix_time_h = format_date(REQUEST_TIME,"custom","G");
+  $lower_limit = $scheduled_send - 2 ;
+  $upper_limit = $scheduled_send + 2 ;
+  if ($current_unix_time_h >= $lower_limit AND $current_unix_time_h <= $upper_limit) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+function _cumpleanos_send_birthday(){
+  $all_site_users = entity_load('user');
+  $actual_year = format_date(REQUEST_TIME,"custom","Y");
+  foreach ($all_site_users as $key) {
+    if (_cumpleanos_validate_user_to_load($key)) {
+      $uid = $key->uid;
+      $mail = $key->mail;
+      $first_name = _cumpleanos_get_text_value('field_user_firstname',$key);
+      $day = _cumpleanos_get_text_value('field_user_birthday',$key);
+      $month = _cumpleanos_get_text_value('field_user_birthmonth',$key);
+      $birthdate = $month . '-' . $day;
+      $users_without_present[] = array('uid'=> $uid, 'mail' => $mail , 'firstname' => $first_name, 'birthdate'=> $birthdate);
+    }
+  }
+  if(sizeof($users_without_present)){
+    foreach ($users_without_present as $value) {
+      $email = $value['mail'];
+      $name = $value['firstname'];
+      if (_cumpleanos_email_send($email,$name)) {
+        $user_uid = $value['uid'];
+        $account = user_load($user_uid);
+        $edit = array(
+          'field_birthday_postal' => array(
+            'und' => array(
+              0 => array(
+                'value' => $actual_year,
+              ),
+            ),
+          ),
+        );
+        $new_account = user_save($account, $edit);
+        $message = 'Postal de cumpleaños enviada a:' . $email;
+        watchdog('cumpleaños', $message, array(), WATCHDOG_NOTICE);
+      }
+      else {
+        _cumpleanos_error_handler($email);
+      }
+    }
+  }
+  /* fin codigo cron */
+}
+
+function _cumpleanos_get_text_value($field, $item){
+  $array = (array) $item;
+  $value = '';
+  if (isset($array[$field]['und'])) {
+   $value = $array[$field]['und'][0]['value'];
+  }
+  return $value;
+}
+
+/**
+ * Implements hook_theme().
+ */
+function cumpleanos_theme($existing, $type, $theme, $path) {
+  return array(
+    'birthday_mail' => array(
+      'render element' => '',
+      'template' => 'birthday_mail',
+      'path' => drupal_get_path('module', 'cumpleanos') .'/theme'
+    ),
+  );
+}
+
+function _cumpleanos_email_send($email, $name){
+  $body = theme('birthday_mail');
+  $my_module = 'cumpleanos';
+  $my_mail_token = 'bar';
+  $from = 'talento@proexport.com.co';
+  $message = array(
+    'to' => $email,
+    //'to' => 'david.carvajal@mccann.com.co',
+    'subject' => t('Feliz cumpleaños') . ' ' . $name,
+    'body' => $body,
+    'headers' => array(
+    'From' => $from,
+    'Sender' => $from,
+    'Return-Path' => $from,
+    'MIME-Version' => '1.0',
+    'Content-Type' => 'text/html;charset=utf-8',),
+  );
+  $system = drupal_mail_system($my_module, $my_mail_token);
+  if ($system->mail($message)) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+function _cumpleanos_error_handler($email){
+  $message = 'Error enviando la postal de cumpleaños a:' . $email;
+  watchdog('cumpleaños', $message, array(), WATCHDOG_WARNING);
+}
+
+function _harley_bisiesto($birthdate, $current_unix_date){
+  if (!_es_bisiesto() && $birthdate == '2-29' && $current_unix_date == '2-28') {
+    return true;
+  }
+  return false;
+}
+
+function _es_bisiesto(){
+  $actual = date("Y");
+  if(!checkdate(02,29,$actual)){
+    return false;
+  }else{
+    return true;
+  }
+}

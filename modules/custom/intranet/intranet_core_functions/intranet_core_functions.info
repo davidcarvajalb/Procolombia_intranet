@@ -1,0 +1,4 @@
+name = Intranet Core functions
+description = Funciones y metodos del core para la intranet de Proexport
+core = 7.x
+package = Proexport

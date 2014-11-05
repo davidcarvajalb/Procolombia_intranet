@@ -1,0 +1,4 @@
+name = Intranet Links
+description = Modulo con la funcionalidad de mis accesos directos
+core = 7.x
+package = Proexport

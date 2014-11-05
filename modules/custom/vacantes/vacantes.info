@@ -1,0 +1,5 @@
+name = Vacantes
+description = Module para los vacantes
+core = 7.x
+package = Developert
+files[] = vacantes.module

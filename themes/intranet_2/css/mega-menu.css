@@ -1,0 +1,150 @@
+.tb-megamenu {
+  background: none;
+  padding-left: 15px;
+  height: 60px;
+}
+.tb-megamenu .dropdown-menu {
+  border-bottom-color: #abba64;
+}
+
+.tb-megamenu .nav li.dropdown.active > .dropdown-toggle,
+.tb-megamenu .nav li.dropdown.open.active > .dropdown-toggle {
+  background: url('../images/border_menu.png') center right no-repeat;
+}
+.tb-megamenu .nav > li > a {
+  color: #707173;
+  font-family: 'latoregular';
+  font-weight: normal;
+  font-size: 15px;
+  background: url('../images/border_menu.png') center right no-repeat;
+  border-right: none;
+  padding: 0px 23px;
+  height: 60px;
+  line-height: 60px;
+}
+.tb-megamenu .nav > li:last-child > a,
+.tb-megamenu .nav > li.last > a {
+  border-right: none;
+  background: none;
+}
+.tb-megamenu .nav li.dropdown.active > .dropdown-toggle, 
+.tb-megamenu .nav li.dropdown.open.active > .dropdown-toggle, 
+.tb-megamenu .nav > li.dropdown.open.active > a:hover,
+.tb-megamenu .nav > .active > a {
+  background: url('../images/over_menu.png') center center no-repeat;
+  border-bottom: solid 5px #d5d7d8;
+  color: #707173;
+}
+.tb-megamenu .nav > li > a:focus,
+.tb-megamenu .nav > li > a:hover {
+  border-bottom: solid 5px #d5d7d8;
+  color: #707173;
+  background: url('../images/over_menu.png') center center no-repeat;
+}
+.tb-megamenu .nav li.dropdown.open > .dropdown-toggle {
+  color: #abba64;
+}
+.tb-megamenu .nav li.dropdown.open > .dropdown-toggle,
+.tb-megamenu .nav li.dropdown.open.active > .dropdown-toggle {
+  background: url('../images/over_menu.png') center center no-repeat;
+  color: #707173;
+}
+.tb-megamenu .nav > li.dropdown.open.active > a:hover,
+.tb-megamenu .nav > li.dropdown.open.active > a:focus {
+  background-color: inherit;
+  color: #707173;
+}
+
+.tb-megamenu .dropdown-menu li > a:hover,
+.tb-megamenu .dropdown-menu li > a:focus,
+.tb-megamenu .dropdown-submenu:hover > a {
+  color: #444444;
+  text-decoration: underline;
+}
+
+.tb-megamenu .nav > .active > a,
+.tb-megamenu .nav > .active > a:hover,
+.tb-megamenu .nav > .active > a:focus {
+  height: 60px;
+  line-height: 60px;
+  color: #707173;
+  text-shadow: none;
+  -webkit-box-shadow: none;
+  -moz-box-shadow: none;
+  box-shadow: none;
+  outline: none;
+  background-color: none;
+  background: url('../images/over_menu.png') center center no-repeat;
+  font-family: 'latoregular';
+  font-weight: normal;
+  font-size: 15px;
+}
+
+.tb-megamenu .block-view-demo .views-field-field-image img {
+  border: 1px solid #eee;
+}
+
+.tb-megamenu .block-view-demo .item-list ul li {
+  border-bottom: 1px solid #eee;
+}
+
+@media (max-width: 979px) {
+.tb-megamenu .nav-collapse .nav > li > a:hover,
+.tb-megamenu .nav-collapse .nav > li > a:focus {
+	color: #abba64;
+  }
+.tb-megamenu .nav-collapse .nav > li.active > a:hover,
+.tb-megamenu .nav-collapse .nav > li.active > a:focus {
+  background-color: #abba64;
+  color: #fff;
+}
+}
+.tb-megamenu .nav li.dropdown > .dropdown-toggle .caret {
+  border-top-color: #707173;
+  border-bottom-color: #707173;
+  margin-top: 27px;
+}
+.tb-megamenu .dropdown-menu {
+  border-bottom: none;
+}
+.tb-megamenu-row {
+  border: solid 1px #d2d2d2;
+  border-top: solid 4px #d5d7d8;
+  padding: 20px 20px 20px; 
+}
+.tb-megamenu-row li {
+  background: url('../images/submenu_li.png') 0% 45% no-repeat;
+  padding-left: 15px;
+}
+.tb-megamenu .dropdown-menu li > a {
+  font-size: 12px;
+  color: #444444;
+  text-transform: uppercase;
+  font-family: 'latobold';
+  display: block;
+  line-height: 18px;
+}
+.tb-megamenu-row .tb-megamenu-column{
+  background: url('../images/mega_menu_border.png') top right repeat-y;
+  padding-right: 1px;
+}
+.tb-megamenu-row .tb-megamenu-column.last {
+  background: none;
+}
+.tb-megamenu .mega-inner {
+  padding: 0px;
+  padding-right: 10px;
+  margin-right: 15px;
+  border-top: solid 1px #d5d7d8;
+  padding-top: 15px;
+}
+.tb-megamenu .last .mega-inner {
+  padding-right: 0px;
+}
+.tb-megamenu .dropdown-menu .active > a, 
+.tb-megamenu .dropdown-menu .active > a:hover {
+  background-color: inherit;
+  background: none;
+  color: #444444;
+  text-decoration: underline;
+}

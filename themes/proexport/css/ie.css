@@ -1,0 +1,24 @@
+#calendario > .t-contiene .view-header{
+  background: #525459;
+  width: 45px;
+  height: 120px;
+  top: 10px;
+  left: -47px;
+  line-height: 120px;
+}
+#calendario > .t-contiene .t-selected .view-header {
+  background: #EDEDED;
+}
+#calendario > .t-contiene.festivos .view-header{
+  top: 130px;
+}
+
+#calendario > .t-contiene .view-header p {
+  word-wrap: break-word;
+  width: 10px;
+  text-align: center;
+  margin: auto;
+  line-height: 14px;
+  vertical-align: middle;
+  display: inline-block;
+}

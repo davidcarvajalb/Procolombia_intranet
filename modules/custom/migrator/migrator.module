@@ -1,0 +1,190 @@
+<?php
+
+/**
+ * Implementation hook_menu().
+ */
+function migrator_menu() {
+  $items = array();
+
+  $items['admin/migrator'] = array(
+    'title' => 'Migrator',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('form_migrator'),
+    'access arguments' => array('migrator admin'),
+
+  );
+
+  return $items;
+}
+
+/**
+* Implementation
+**/
+
+function migrator_permission() {
+  return array(
+    'migrator admin' => array(
+      'title' => t('Administer migrator'),
+      'description' => t('Administration of module migrator.'),
+    ),
+  );
+}
+
+/**
+* Implementation form admin
+**/
+
+function form_migrator($form, &$form_state) {
+
+ $form['upload'] = array(
+    '#type' => 'file',
+    '#title' => t('Download archive'),
+    '#description' => t('select extension xlsx archive'),
+
+  );
+
+ $form['term'] = array(
+       '#type' => 'select',
+       '#title' => t('Taxonomy'),
+       '#options' => taxonomy_get()
+
+   );
+
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Download')
+  );
+
+  return $form;
+}
+
+
+/**
+* Implementation hook_form_submit form admin
+**/
+function form_migrator_submit($form, &$form_state) {
+
+$path  = "public://migrator";
+$directorio = file_prepare_directory($path, FILE_CREATE_DIRECTORY);
+
+//if($directorio) {
+  /** Incluir la ruta **/
+  set_include_path(get_include_path() . PATH_SEPARATOR . './Classes/');
+
+  /** Clases necesarias */
+  require_once('PHPExcel.php');
+  require_once('PHPExcel/Reader/Excel2007.php');
+
+  if($file = file_save_upload('upload', array('file_validate_extensions' => array(0 => 'xlsx')), 'public://migrator/', FILE_EXISTS_REPLACE)) {
+
+
+    $objReader = PHPExcel_IOFactory::createReader('Excel2007');$objReader->setReadDataOnly(true);
+
+    $objPHPExcel = $objReader->load("sites/default/files/migrator/$file->filename");
+    $objWorksheet = $objPHPExcel->getActiveSheet();
+    $highestRow = $objWorksheet->getHighestRow();
+    $highestColumn = $objWorksheet->getHighestColumn();
+    $highestColumnIndex = PHPExcel_Cell::columnIndexFromString($highestColumn);
+
+
+    for ($row = 2; $row <= $highestRow; ++$row) {
+
+      for ($col = 0; $col <= $highestColumnIndex; ++$col) {
+          $array[$row][] = $objWorksheet->getCellByColumnAndRow($col, $row)->getValue();
+        }
+
+    }
+
+    foreach ($array AS $value) {
+      $value += array(
+            'term' => $form_state['values']['term']
+      );
+      $operations[] = array('migrator_batch', array($value));
+    }
+
+    $batch = array(
+        'operations' => $operations,
+        'finished' => 'migrator_finished',
+      );
+
+      batch_set($batch);
+  }
+
+}
+
+/**
+* Batch operation of form admin
+**/
+
+function migrator_batch($line, &$context) {
+
+  //title
+  $title = "$line[0] $line[3]";
+  $node = new stdClass();
+
+  $node->nid = $nid;
+  $node->type = 'eventos_festivos';
+
+  node_object_prepare($node);
+
+  $node->title = $title;
+  $node->uid = 1;
+  $node->created = time();
+  $node->changed = time();
+  $node->status = 1;
+  $node->comment = 0;
+  $node->promote = 0;
+  $node->moderate = 0;
+  $node->sticky = 0;
+  $node->language = 'es';
+
+  //Field
+  $node->field_categoria[LANGUAGE_NONE][0]['tid']  = array(
+    'value' => $line['term']
+  );
+
+    $node->body[LANGUAGE_NONE][0] = array(
+    'value' => $line[4]
+  );
+
+  $node->field_fecha[LANGUAGE_NONE][0] = array(
+    'value' => strtotime($line[1]),
+    'value2' => strtotime($line[2]),
+    'timezone' => 'America/Bogota',
+    'timezone_db' => 'America/Bogota',
+    'date_type' =>  'datestamp'
+  );
+
+  node_save($node);
+
+  //Mensaje
+  $context['message'] = 'Creando: ' . $title;
+
+
+}
+
+/**
+ * Batch 'finished' of form admin
+**/
+
+function migrtor_finished($success, $results, $operations) {
+  if ($success) {
+      drupal_set_message(t('Finish perfect: %final', array('%final' => end($results))));
+  }
+  else {
+    $error_operation = reset($operations);
+    drupal_set_message(t('An error occurred while processing @operation with arguments : @args', array('@operation' => $error_operation[0], '@args' => print_r($error_operation[0], TRUE))));
+  }
+}
+
+function taxonomy_get() {
+  $term = taxonomy_get_tree(9);
+  $array =  array();
+
+  foreach ($term as $key => $value) {
+      $array[$value->tid] = $value->name;
+  }
+
+  return $array;
+}

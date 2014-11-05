@@ -1,0 +1,5 @@
+name = Migrator
+description = Migrator
+core = 7.x
+package = Developert
+files[] = migrator.module
